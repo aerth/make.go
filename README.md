@@ -9,15 +9,17 @@ A Go script that could replace your Makefile.
 
 ## Usage
 
-This script is meant to live in your project's root and used with `go run
-make.go`.
+`make.go` should be installed in $PATH, chmod +x, and can be used anywhere.
 
-- `go run make.go` builds a versioned binary for the current platform.
-- `go run make.go -os windows -arch amd64` builds a versioned binary for a
+- `make.go` builds a versioned binary for the current platform
+- `make.go -os windows -arch amd64` builds a versioned binary for a
   specific platform.
-- `go run make.go --release` builds versioned binaries for all target
+- `make.go --release` builds versioned binaries for all target
   platforms.
-- `go run make.go --clean` removes produced binaries.
+- `make.go --clean` removes produced binaries.
+- `make.go -c path/to/project` changes to directory before building. binaries will end up in $PWD
+- `make.go path/to/project` changes to directory before building. binaries will end up in $PWD
+
 
 ## Rationale
 
