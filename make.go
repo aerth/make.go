@@ -28,68 +28,99 @@ type binary struct {
 }
 
 var (
-	release   = flag.Bool("all", false, "build binaries for all target platforms")
-	verbose   = flag.Bool("v", false, "print build output")
-	series    = flag.Bool("s", false, "one build at a time")
-	clean     = flag.Bool("clean", false, "remove all created binaries from current directory")
-	buildOS   = flag.String("os", runtime.GOOS, "set operating system to build for")
-	buildArch = flag.String("arch", runtime.GOARCH, "set architecture to build for")
-	chroot    = flag.String("c", "", "change to directory before starting")
-	maxproc   = flag.Int("j", 1, "Max processes")
+	_release   = "v0.1.00" // make.go release
+	cross      = flag.Bool("all", false, "build binaries for all target platforms")
+	verbose    = flag.Bool("v", false, "print build output")
+	series     = flag.Bool("s", false, "one build at a time")
+	cgoenabled = flag.Bool("cgo", false, "use cgo compiler")
+	clean      = flag.Bool("clean", false, "remove all created binaries from current directory")
+	buildOS    = flag.String("os", runtime.GOOS, "set operating system to build for")
+	buildArch  = flag.String("arch", runtime.GOARCH, "set architecture to build for")
+	chroot     = flag.String("c", "", "change to directory before starting")
+	gobin      = flag.String("o", "", "output files to directory, current working directory if blank")
+	maxproc    = flag.Int("j", 4, "max processes")
+	rwd        string // real working directory, where binaries will be located
 )
 
-var rwd string
-
 func init() {
+	flag.Usage = usage
+	println("make.go " + _release + " [https://github.com/aerth/make.go]")
 	log.SetFlags(0)
+
+	// get rwd
 	var err error
 	rwd, err = os.Getwd()
 	if err != nil {
 		log.Println(err.Error())
 		os.Exit(111)
 	}
-	if rwd != "" {
-		rwd += "/"
-	}
-	if "1" == os.Getenv("CGO_ENABLED") {
-		log.Println("Compiler: CGO")
-	} else {
-		os.Setenv("CGO_ENABLED", "0")
-		log.Println("Compiler: GC")
-	}
+	// trailing slash
+	rwd += "/"
 }
+
 func usage() {
-	println("Usage: make.go [OPTIONS] [GO_PACKAGE]\n\n")
-	println("OPTIONS:")
+	//println("Usage: make.go [OPTIONS] [GO_PACKAGE]\n")
+	log.Println("usage:", "make.go", "[OPTIONS]", "[go_project]")
+	log.Println("OPTIONS:")
 	flag.PrintDefaults()
 }
 
 func main() {
-	flag.Usage = usage
 	flag.Parse()
-	runtime.GOMAXPROCS(*maxproc)
-	runtime.GOMAXPROCS(*maxproc)
-	for _, fl := range flag.Args() {
-		if strings.HasPrefix(fl, "-") {
-			log.Fatalln("put flags before arguments")
-		}
+
+	// user output directory
+	if *gobin != "" {
+		rwd = *gobin
 	}
-	var err error
+	// chdir or die
 	switch {
+	case len(flag.Args()) >= 1 && *chroot != "":
+		log.Fatalln("\nfatal: use argument or '-c' flag, not both")
+	case len(flag.Args()) >= 1 && *chroot == "":
+		println("Using argument 1")
+		*chroot = flag.Args()[0]
+		fallthrough
 	case *chroot != "":
-		err = os.Chdir(*chroot)
+		println("Changing directory:", *chroot)
+		err := os.Chdir(*chroot)
 		if err != nil {
 			log.Println(err.Error())
 			os.Exit(111)
 		}
-	case len(flag.Args()) > 0:
-		err = os.Chdir(flag.Args()[0])
-		if err != nil {
-			log.Println(err.Error())
-			os.Exit(111)
+	default: // no args, no chroot
+	}
+
+	// check if user flags are after arguments, in which case they would have been ignored silently
+	for i, fl := range flag.Args() {
+		switch {
+		case fl == "--":
+			continue
+		case fl == "-":
+			log.Fatalf("\nfatal: bad flag %v: %q", i+1, fl)
+		case strings.HasPrefix(fl, "-"):
+			log.Fatalln("\nfatal: found flags after arguments")
 		}
 	}
 
+	// print go version and goroot
+	log.Println(runtime.Version()+":", runtime.GOROOT())
+
+	// print name of go compiler
+	if *cgoenabled {
+		os.Setenv("CGO_ENABLED", "1")
+	}
+	if "1" == os.Getenv("CGO_ENABLED") {
+		log.Println("go compiler: CGO")
+	} else {
+		os.Setenv("CGO_ENABLED", "0")
+		log.Println("compiler: GC")
+	}
+
+	// print max procs
+	runtime.GOMAXPROCS(*maxproc)
+	println("gomaxprocs:", runtime.GOMAXPROCS(*maxproc))
+
+	// get binary name
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Println(err.Error())
@@ -97,7 +128,6 @@ func main() {
 	}
 
 	bin := binary{
-
 		name: getMainProjectName(wd),
 		// Change these according to the platforms you would like to support. A
 		// full list can be found here:
@@ -114,8 +144,9 @@ func main() {
 	}
 
 	bin.version = getVersion()
+	log.Println("building:", bin.name, bin.version)
 	if *series {
-		if *release {
+		if *cross {
 			forEachBinTargetSeries(bin, buildBinary)
 			os.Exit(0)
 		}
@@ -129,7 +160,7 @@ func main() {
 		os.Exit(111)
 	}
 
-	if *release {
+	if *cross {
 		forEachBinTargetParallel(bin, buildBinary)
 		os.Exit(0)
 	}
@@ -195,23 +226,24 @@ func buildBinary(bin binary, OS, arch string) {
 	cmd.Env = setEnv(cmd.Env, "GOARCH", arch)
 	if err := cmd.Run(); err != nil {
 		if !strings.Contains(buf.String(), "no buildable Go source files") {
-			log.Println("BUILD ERROR:", err, buf.String())
+			log.Println("\nBUILD ERROR:", err.Error(), buf.String())
 		} else {
-			log.Println("fatal: not a Go project")
+			log.Println("\nfatal: not a Go project")
 			log.Println("usage:", "make.go", "[go_project]")
 		}
 		os.Exit(111)
 	}
+	// print build log
 	if *verbose {
 		log.Println(buf.String())
 	}
+	// "Built make.go (1min2sec)"
 	log.Printf("Built %s (%s)", bin.Name(OS, arch), time.Now().Sub(t1))
 }
 
 // rmBinary removes a binary from the current directory.
 func rmBinary(bin binary, OS, arch string) {
-	os.Chdir(rwd)
-	err := os.Remove(bin.Name(OS, arch))
+	err := os.Remove(rwd + bin.Name(OS, arch))
 	if err != nil {
 		if !os.IsNotExist(err) {
 			println("Error removing binary:", err)
@@ -265,5 +297,4 @@ func getMainProjectName(dir string) string {
 	dirname := strings.Split(dir, "/")
 	projectName := dirname[len(dirname)-1]
 	return projectName
-
 }
