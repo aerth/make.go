@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"bytes"
+	"time"
 )
 
 type platform struct {
@@ -29,10 +30,12 @@ type binary struct {
 var (
 	release   = flag.Bool("all", false, "build binaries for all target platforms")
 	verbose   = flag.Bool("v", false, "print build output")
+	series   = flag.Bool("s", false, "one build at a time")
 	clean     = flag.Bool("clean", false, "remove all created binaries from current directory")
 	buildOS   = flag.String("os", runtime.GOOS, "set operating system to build for")
 	buildArch = flag.String("arch", runtime.GOARCH, "set architecture to build for")
 	chroot = flag.String("c", "", "change to directory before starting")
+	maxproc = flag.Int("j", 1, "Max processes")
 )
 
 var rwd string
@@ -59,6 +62,8 @@ func usage() {
 func main() {
 	flag.Usage = usage
 	flag.Parse()
+	runtime.GOMAXPROCS(*maxproc)
+	runtime.GOMAXPROCS(*maxproc)
 for _, fl := range flag.Args() {
 	if strings.HasPrefix(fl, "-"){
 		log.Fatalln("put flags before arguments")
@@ -105,14 +110,28 @@ case len(flag.Args()) > 0:
 	}
 
 	bin.version = getVersion()
+	if *series {
+		if *release {
+			forEachBinTargetSeries(bin, buildBinary)
+			os.Exit(0)
+		}
+
+		if *clean {
+			forEachBinTargetSeries(bin, rmBinary)
+			os.Exit(0)
+		}
+
+	println("need -all flag")
+	os.Exit(111)
+	}
 
 	if *release {
-		forEachBinTarget(bin, buildBinary)
+		forEachBinTargetParallel(bin, buildBinary)
 		os.Exit(0)
 	}
 
 	if *clean {
-		forEachBinTarget(bin, rmBinary)
+		forEachBinTargetParallel(bin, rmBinary)
 		os.Exit(0)
 	}
 
@@ -138,7 +157,7 @@ type binaryFunc func(bin binary, OS, arch string)
 
 // forEachBinTarget runs a function for all the target platforms of a binary in
 // parallel.
-func forEachBinTarget(bin binary, fn binaryFunc) {
+func forEachBinTargetParallel(bin binary, fn binaryFunc) {
 	var wg sync.WaitGroup
 	for _, t := range bin.targets {
 		wg.Add(1)
@@ -149,10 +168,18 @@ func forEachBinTarget(bin binary, fn binaryFunc) {
 	}
 	wg.Wait()
 }
+func forEachBinTargetSeries(bin binary, fn binaryFunc) {
+	for _, t := range bin.targets {
+		func(bin binary, os, arch string) {
+			fn(bin, os, arch)
+		}(bin, t.os, t.arch)
+	}
+}
 
 // buildBinary builds a binary for a certain operating system and architecture
 // combination while using --ldflags to set the binary's version variable.
 func buildBinary(bin binary, OS, arch string) {
+	t1 := time.Now()
 	ldflags := fmt.Sprintf("--ldflags=-X main.version=%s", bin.version)
 	cmd := exec.Command("go", "build", "-x", ldflags, "-o", rwd+bin.Name(OS, arch))
 	buf := new(bytes.Buffer)
@@ -172,7 +199,7 @@ func buildBinary(bin binary, OS, arch string) {
 		os.Exit(111)
 	}
 	if *verbose { log.Println(buf.String()) }
-	log.Println("Built:", bin.Name(OS, arch))
+	log.Printf("Built %s (%s)", bin.Name(OS, arch), time.Now().Sub(t1))
 }
 
 // rmBinary removes a binary from the current directory.
