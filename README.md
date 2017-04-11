@@ -1,22 +1,23 @@
 # make.go
 
-A Go script that could replace your Makefile.
+An executable Go script that could replace your Makefile.
 
 ## Features
 
-- Automated versioning of produced binaries.
-- Parallel cross compilation for all target platforms.
+- Automated versioning of produced binaries if project is a git repo
+- Parallel cross compilation for all target platforms. (-all flag)
+- gc by default, use -cgo flag or CGO_ENABLED=1 var to use cgo
 
 ## Usage
 
-`make.go` should be installed in $PATH, chmod +x, and can be used anywhere.
+`make.go` should be made executable (`chmod +x`).
+
+It can be installed system-wide, or customized and packaged with your project's source code.
 
 - `make.go` builds a versioned binary for the current platform
-- `make.go -os windows -arch amd64` builds a versioned binary for a
-  specific platform.
-- `make.go --release` builds versioned binaries for all target
-  platforms.
-- `make.go --clean` removes produced binaries.
+- `make.go -all` builds versioned binaries for all target platforms.
+- `make.go -clean` removes produced binaries (removes current releases only).
+- `make.go -os windows -arch amd64` builds a versioned binary for a specific platform.
 - `make.go -c path/to/project` changes to directory before building. binaries will end up in $PWD
 - `make.go path/to/project` changes to directory before building. binaries will end up in $PWD
 
@@ -57,8 +58,8 @@ script gets the job done then you should use that.
 ## Good alternatives
 
 - A Makefile or other script.
-- [Gox](https://github.com/mitchellh/gox), my personal favorite cross compile
-  tool.
+- [Gox](https://github.com/mitchellh/gox), my personal favorite cross compile tool.
+- [Gomaker](https://github.com/aerth/gomaker), Makefile generator for Go projects
 
 ## Contributing
 
@@ -67,4 +68,3 @@ If you would like to add to this basic make.go, you are welcome to do so.
 ## License
 
 The source code is public domain.
-
