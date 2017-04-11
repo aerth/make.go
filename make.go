@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
@@ -12,7 +13,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"bytes"
 	"time"
 )
 
@@ -30,32 +30,37 @@ type binary struct {
 var (
 	release   = flag.Bool("all", false, "build binaries for all target platforms")
 	verbose   = flag.Bool("v", false, "print build output")
-	series   = flag.Bool("s", false, "one build at a time")
+	series    = flag.Bool("s", false, "one build at a time")
 	clean     = flag.Bool("clean", false, "remove all created binaries from current directory")
 	buildOS   = flag.String("os", runtime.GOOS, "set operating system to build for")
 	buildArch = flag.String("arch", runtime.GOARCH, "set architecture to build for")
-	chroot = flag.String("c", "", "change to directory before starting")
-	maxproc = flag.Int("j", 1, "Max processes")
+	chroot    = flag.String("c", "", "change to directory before starting")
+	maxproc   = flag.Int("j", 1, "Max processes")
 )
 
 var rwd string
 
-func init(){
+func init() {
 	log.SetFlags(0)
 	var err error
 	rwd, err = os.Getwd()
 	if err != nil {
-		println(err.Error())
+		log.Println(err.Error())
 		os.Exit(111)
 	}
 	if rwd != "" {
-		rwd+="/"
+		rwd += "/"
+	}
+	if "1" == os.Getenv("CGO_ENABLED") {
+		log.Println("Compiler: CGO")
+	} else {
+		os.Setenv("CGO_ENABLED", "0")
+		log.Println("Compiler: GC")
 	}
 }
-
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: make.go [OPTIONS] [GO_PACKAGE]\n\n")
-	fmt.Fprintln(os.Stderr, "OPTIONS:")
+	println("Usage: make.go [OPTIONS] [GO_PACKAGE]\n\n")
+	println("OPTIONS:")
 	flag.PrintDefaults()
 }
 
@@ -64,31 +69,30 @@ func main() {
 	flag.Parse()
 	runtime.GOMAXPROCS(*maxproc)
 	runtime.GOMAXPROCS(*maxproc)
-for _, fl := range flag.Args() {
-	if strings.HasPrefix(fl, "-"){
-		log.Fatalln("put flags before arguments")
+	for _, fl := range flag.Args() {
+		if strings.HasPrefix(fl, "-") {
+			log.Fatalln("put flags before arguments")
+		}
 	}
-}
-var err error
-switch {
-case *chroot != "":
+	var err error
+	switch {
+	case *chroot != "":
 		err = os.Chdir(*chroot)
 		if err != nil {
-			println(err.Error())
+			log.Println(err.Error())
 			os.Exit(111)
 		}
-case len(flag.Args()) > 0:
-			err = os.Chdir(flag.Args()[0])
-			if err != nil {
-				println(err.Error())
-				os.Exit(111)
-			}
+	case len(flag.Args()) > 0:
+		err = os.Chdir(flag.Args()[0])
+		if err != nil {
+			log.Println(err.Error())
+			os.Exit(111)
+		}
 	}
-
 
 	wd, err := os.Getwd()
 	if err != nil {
-		println(err.Error())
+		log.Println(err.Error())
 		os.Exit(111)
 	}
 
@@ -121,8 +125,8 @@ case len(flag.Args()) > 0:
 			os.Exit(0)
 		}
 
-	println("need -all flag")
-	os.Exit(111)
+		log.Println("need -all flag")
+		os.Exit(111)
 	}
 
 	if *release {
@@ -198,16 +202,19 @@ func buildBinary(bin binary, OS, arch string) {
 		}
 		os.Exit(111)
 	}
-	if *verbose { log.Println(buf.String()) }
+	if *verbose {
+		log.Println(buf.String())
+	}
 	log.Printf("Built %s (%s)", bin.Name(OS, arch), time.Now().Sub(t1))
 }
 
 // rmBinary removes a binary from the current directory.
 func rmBinary(bin binary, OS, arch string) {
+	os.Chdir(rwd)
 	err := os.Remove(bin.Name(OS, arch))
 	if err != nil {
 		if !os.IsNotExist(err) {
-			fmt.Fprintln(os.Stderr, "Error removing binary:", err)
+			println("Error removing binary:", err)
 		}
 	}
 }
@@ -253,11 +260,10 @@ func (bin binary) Names() []string {
 	return names
 }
 
-
 func getMainProjectName(dir string) string {
-		dir = strings.TrimSuffix(dir, "/")
-		dirname := strings.Split(dir, "/")
-		projectName := dirname[len(dirname)-1]
-		return projectName
+	dir = strings.TrimSuffix(dir, "/")
+	dirname := strings.Split(dir, "/")
+	projectName := dirname[len(dirname)-1]
+	return projectName
 
 }
