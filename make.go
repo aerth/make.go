@@ -90,7 +90,8 @@ func main() {
 	if *gobin != "" {
 		rwd = *gobin
 	}
-
+	var abs = *destination
+	var err error
 	// chdir or die
 	switch {
 	case len(flag.Args()) >= 1 && *destination != "":
@@ -98,13 +99,30 @@ func main() {
 	case len(flag.Args()) >= 1 && *destination == "":
 		if !strings.HasSuffix(*destination, ".go") {
 			*destination = flag.Args()[0]
+			if *destination == "." {
+				*destination = ""
+			}
+			if *destination == ".." || *destination == "../" {
+				abs, err = filepath.Abs(*destination)
+				if err != nil {
+					println(err.Error())
+					os.Exit(111)
+				}
+				*destination = abs
+			}
 			println("using", *destination)
+
 		} else {
 			singlefile = flag.Args()[0]
 		}
 		fallthrough
 	case *destination != "":
-		err := os.Chdir(*destination)
+		abs, err = filepath.Abs(*destination)
+		if err != nil {
+			println(err.Error())
+			os.Exit(111)
+		}
+		err = os.Chdir(abs)
 		if err != nil {
 			if strings.Contains(err.Error(), "no such") {
 				// go1.8 default $HOME/go
@@ -124,6 +142,11 @@ func main() {
 			}
 		}
 	default: // no args, no destination
+	}
+	abs, err = filepath.Abs(*destination)
+	if err != nil {
+		println(err.Error())
+		os.Exit(111)
 	}
 	// check if user flags are after arguments, in which case they would have been ignored silently
 	for i, fl := range flag.Args() {
@@ -157,10 +180,13 @@ func main() {
 
 	// get binary name
 	if *destination == "" {
-		*destination = rwd
+		println("setting destination to:", ".")
+		*destination = "."
 	}
+
+	println("absolute:", abs)
 	bin := binary{
-		name: getMainProjectName(filepath.Base(*destination)),
+		name: getMainProjectName(filepath.Base(abs)),
 		// Change these according to the platforms you would like to support. A
 		// full list can be found here:
 		// https://golang.org/doc/install/source#environment
@@ -175,7 +201,7 @@ func main() {
 		},
 	}
 
-	bin.version = getVersion()
+	bin.version = getVersion(abs)
 	log.Println("building:", bin.name, bin.version)
 	if *series {
 		if *cross {
@@ -206,9 +232,9 @@ func main() {
 }
 
 // getVersion returns the version of the project using git.
-func getVersion() string {
+func getVersion(abs string) string {
 	cmd := exec.Command("git", "describe", "--tags", "--always")
-	cmd.Dir = *destination
+	cmd.Dir = abs
 	buf := new(bytes.Buffer)
 	cmd.Stderr = buf
 	out, err := cmd.Output()
