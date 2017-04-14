@@ -241,7 +241,7 @@ func forEachBinTargetSeries(bin binary, fn binaryFunc) {
 // combination while using --ldflags to set the binary's version variable.
 func buildBinary(bin binary, OS, arch string) {
 	t1 := time.Now()
-	ldflags := fmt.Sprintf("--ldflags=-s -X main.version=%s", bin.version)
+	ldflags := fmt.Sprintf("--ldflags=-s -w -X main.version=%s", bin.version)
 	cmd := exec.Command("go", "build", "-x", ldflags, "-o", rwd+bin.Name(OS, arch), singlefile)
 	buf := new(bytes.Buffer)
 	cmd.Stdout = buf
