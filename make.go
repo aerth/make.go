@@ -68,17 +68,29 @@ func usage() {
 func main() {
 	flag.Parse()
 
+	if flag.Args()[0] == "install" {
+		println("install not supported")
+		os.Exit(111)
+	}
+
 	// user output directory
 	if *gobin != "" {
 		rwd = *gobin
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Println(err.Error())
+		os.Exit(111)
 	}
 	// chdir or die
 	switch {
 	case len(flag.Args()) >= 1 && *chroot != "":
 		log.Fatalln("\nfatal: use argument or '-c' flag, not both")
 	case len(flag.Args()) >= 1 && *chroot == "":
-		println("Using argument 1")
+
 		*chroot = flag.Args()[0]
+
 		fallthrough
 	case *chroot != "":
 		println("Changing directory:", *chroot)
@@ -121,11 +133,6 @@ func main() {
 	println("gomaxprocs:", runtime.GOMAXPROCS(*maxproc))
 
 	// get binary name
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Println(err.Error())
-		os.Exit(111)
-	}
 
 	bin := binary{
 		name: getMainProjectName(wd),
@@ -215,7 +222,7 @@ func forEachBinTargetSeries(bin binary, fn binaryFunc) {
 // combination while using --ldflags to set the binary's version variable.
 func buildBinary(bin binary, OS, arch string) {
 	t1 := time.Now()
-	ldflags := fmt.Sprintf("--ldflags=-X main.version=%s", bin.version)
+	ldflags := fmt.Sprintf("--ldflags=-s -X main.version=%s", bin.version)
 	cmd := exec.Command("go", "build", "-x", ldflags, "-o", rwd+bin.Name(OS, arch))
 	buf := new(bytes.Buffer)
 	cmd.Stdout = buf
