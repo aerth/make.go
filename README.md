@@ -1,4 +1,4 @@
-# [make.go](https://github.com/aerth/make.go/archive/make.go-master.zip)
+# [make.go](https://github.com/aerth/make.go/archive/master.zip)
 
 
 ## Features
