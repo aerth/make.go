@@ -1,4 +1,4 @@
-///bin/true; exec /usr/bin/env go run "$0" -- "$@"; exit "$?"
+///bin/true; exec /usr/bin/env go run "$0" "$@"; exit "$?"
 //+build ignore
 
 /*
@@ -98,6 +98,7 @@ func main() {
 	case len(flag.Args()) >= 1 && *destination == "":
 		if !strings.HasSuffix(*destination, ".go") {
 			*destination = flag.Args()[0]
+			println("using", *destination)
 		} else {
 			singlefile = flag.Args()[0]
 		}
@@ -155,9 +156,11 @@ func main() {
 	println("gomaxprocs:", runtime.GOMAXPROCS(*maxproc))
 
 	// get binary name
-
+	if *destination == "" {
+		*destination = rwd
+	}
 	bin := binary{
-		name: getMainProjectName(*destination),
+		name: getMainProjectName(filepath.Base(*destination)),
 		// Change these according to the platforms you would like to support. A
 		// full list can be found here:
 		// https://golang.org/doc/install/source#environment
