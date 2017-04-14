@@ -32,25 +32,25 @@ type platform struct {
 
 type binary struct {
 	name    string
-	single string
+	single  string
 	version string
 	targets []platform
 }
 
 var (
-	_release   = "v0.1.01" // make.go release
-	cross      = flag.Bool("all", false, "build binaries for all target platforms")
-	verbose    = flag.Bool("v", false, "print build output")
-	series     = flag.Bool("s", false, "one build at a time")
-	cgoenabled = flag.Bool("cgo", false, "use cgo compiler")
-	clean      = flag.Bool("clean", false, "remove all created binaries from current directory")
-	buildOS    = flag.String("os", runtime.GOOS, "set operating system to build for")
-	buildArch  = flag.String("arch", runtime.GOARCH, "set architecture to build for")
-	destination     = flag.String("c", "", "change to directory before starting")
-	gobin      = flag.String("o", "", "output files to directory, current working directory if blank")
-	maxproc    = flag.Int("j", 4, "max processes")
-	rwd        string // real working directory, where binaries will be located
-	singlefile string
+	_release    = "v0.1.01" // make.go release
+	cross       = flag.Bool("all", false, "build binaries for all target platforms")
+	verbose     = flag.Bool("v", false, "print build output")
+	series      = flag.Bool("s", false, "one build at a time")
+	cgoenabled  = flag.Bool("cgo", false, "use cgo compiler")
+	clean       = flag.Bool("clean", false, "remove all created binaries from current directory")
+	buildOS     = flag.String("os", runtime.GOOS, "set operating system to build for")
+	buildArch   = flag.String("arch", runtime.GOARCH, "set architecture to build for")
+	destination = flag.String("c", "", "change to directory before starting")
+	gobin       = flag.String("o", "", "output files to directory, current working directory if blank")
+	maxproc     = flag.Int("j", 4, "max processes")
+	rwd         string // real working directory, where binaries will be located
+	singlefile  string
 )
 
 func init() {
@@ -101,25 +101,25 @@ func main() {
 		}
 		fallthrough
 	case *destination != "":
-		println("Changing directory:", *destination)
 		err := os.Chdir(*destination)
 		if err != nil {
-			log.Println(err.Error())
-			if strings.Contains(err.Error(), "no such"){
-				println("Changing directory:", *destination)
+			if strings.Contains(err.Error(), "no such") {
+				// go1.8 default $HOME/go
 				gopath := os.Getenv("GOPATH")
 				if gopath == "" {
-					gopath = filepath.Join(os.Getenv("HOME"),"go")
+					gopath = filepath.Join(os.Getenv("HOME"), "go")
 				}
-			if err != nil {
+				gopath = filepath.Join(gopath, "src")
 				err = os.Chdir(filepath.Join(gopath, *destination))
-				log.Println(err.Error())
-				os.Exit(111)
+
+				if err != nil {
+					log.Println(err.Error())
+					os.Exit(111)
+				}
 			}
 		}
-	}
 	default: // no args, no destination
-}
+	}
 	// check if user flags are after arguments, in which case they would have been ignored silently
 	for i, fl := range flag.Args() {
 		switch {
@@ -262,7 +262,7 @@ func buildBinary(bin binary, OS, arch string) {
 		log.Println(buf.String())
 	}
 	// "Built make.go (1min2sec)"
-	log.Printf("Built %s (%s)", bin.Name(OS, arch), time.Now().Sub(t1))
+	log.Printf("built %s (%s)", bin.Name(OS, arch), time.Now().Sub(t1))
 }
 
 // rmBinary removes a binary from the current directory.
@@ -270,7 +270,7 @@ func rmBinary(bin binary, OS, arch string) {
 	err := os.Remove(rwd + bin.Name(OS, arch))
 	if err != nil {
 		if !os.IsNotExist(err) {
-			println("Error removing binary:", err)
+			println("error removing binary:", err)
 		}
 	}
 }
