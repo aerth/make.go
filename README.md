@@ -1,18 +1,18 @@
-# make.go
+# [make.go](https://github.com/aerth/make.go/archive/make.go-master.zip)
 
-An executable Go script that could replace your Makefile.
 
 ## Features
 
 - Automated versioning of produced binaries if project is a git repo
 - Parallel cross compilation for all target platforms. (-all flag)
-- gc by default, use -cgo flag or CGO_ENABLED=1 var to use cgo
+- `gc` by default, use -cgo flag or CGO_ENABLED=1 var to use `cgo`
+- Produces static linked binaries for all platforms in one easy command
 
 ## Usage
 
 `make.go` should be made executable (`chmod +x`).
 
-It can be installed system-wide, or customized and packaged with your project's source code.
+It can be installed system-wide (`/usr/local/bin/make.go`), or customized and packaged with your project's source code.
 
 - `make.go` builds a versioned binary for the current platform
 - `make.go -all` builds versioned binaries for all target platforms.
@@ -21,50 +21,16 @@ It can be installed system-wide, or customized and packaged with your project's 
 - `make.go -c path/to/project` changes to directory before building. binaries will end up in $PWD
 - `make.go path/to/project` changes to directory before building. binaries will end up in $PWD
 
-
-## Rationale
-
-Having quite a few Go projects that produce a single binary, I was looking for
-a good way to have automated versioning and easily produce binaries for all the
-platforms that I want to support. Of course, Go can easily cross compile
-binaries and by using `--ldflags` when building we can also add a version to
-our produced binary. Naturally I wrote a Makefile that did all this.
-
-But then I thought, how would this look if it was written in Go?
-
-## Reasons to use a make.go instead of a more succinct Makefile
-
-- Your project has a non trivial building procedure that could benefit from
-  being expressed in robust Go code.
-- You want the increased portability of Go.
-- You like writing Go!
-
-## How to use this make.go
-
-This is by no means a generic script that can be used without modifications but
-you can use it as a starting point. The idea is to have a make.go specific for
-your project that could act as your build script and possibly do other more
-complex stuff. The source code is public domain so if you find the content
-useful and want to use it as a starting point, simply copy make.go, modify it
-and extend it according to the needs of your project.
-
-## Disclaimer
-
-Now I am not suggesting that you should go and replace all your Makefiles with
-Go scripts. I wrote this as an experiment for my specific case, I thought the
-code might be useful to others and decided to share it. If a Makefile or other
-script gets the job done then you should use that.
-
 ## Good alternatives
 
 - A Makefile or other script.
 - [Gox](https://github.com/mitchellh/gox), my personal favorite cross compile tool.
 - [Gomaker](https://github.com/aerth/gomaker), Makefile generator for Go projects
 
-## Contributing
-
-If you would like to add to this basic make.go, you are welcome to do so.
-
 ## License
 
 The source code is public domain.
+
+## Original make.go
+
+https://github.com/nstratos/make.go

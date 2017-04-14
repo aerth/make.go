@@ -2,13 +2,15 @@
 //+build ignore
 
 /*
+ * /usr/local/bin/make.go
+ * make this file executable (chmod +x make.go)
+ *
+ * aerth fork: github.com/aerth/make.go
+ * original: github.com/nstratos/make.go
+ *
+ */
 
-make me executable
-dont compile me
-
-*/
-
-// package make.go is an executable Go script to build Go project
+// package make.go builds Go projects
 package main
 
 import (
