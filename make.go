@@ -1,6 +1,14 @@
-///bin/true; exec /usr/bin/env go run "$0" "$@"; exit "$?"
+///bin/true; exec /usr/bin/env go run "$0" -- "$@"; exit "$?"
 //+build ignore
 
+/*
+
+make me executable
+dont compile me
+
+*/
+
+// package make.go is an executable Go script to build Go project
 package main
 
 import (
@@ -10,6 +18,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -23,12 +32,13 @@ type platform struct {
 
 type binary struct {
 	name    string
+	single string
 	version string
 	targets []platform
 }
 
 var (
-	_release   = "v0.1.00" // make.go release
+	_release   = "v0.1.01" // make.go release
 	cross      = flag.Bool("all", false, "build binaries for all target platforms")
 	verbose    = flag.Bool("v", false, "print build output")
 	series     = flag.Bool("s", false, "one build at a time")
@@ -36,10 +46,11 @@ var (
 	clean      = flag.Bool("clean", false, "remove all created binaries from current directory")
 	buildOS    = flag.String("os", runtime.GOOS, "set operating system to build for")
 	buildArch  = flag.String("arch", runtime.GOARCH, "set architecture to build for")
-	chroot     = flag.String("c", "", "change to directory before starting")
+	destination     = flag.String("c", "", "change to directory before starting")
 	gobin      = flag.String("o", "", "output files to directory, current working directory if blank")
 	maxproc    = flag.Int("j", 4, "max processes")
 	rwd        string // real working directory, where binaries will be located
+	singlefile string
 )
 
 func init() {
@@ -68,7 +79,7 @@ func usage() {
 func main() {
 	flag.Parse()
 
-	if flag.Args()[0] == "install" {
+	if len(flag.Args()) > 0 && flag.Args()[0] == "install" {
 		println("install not supported")
 		os.Exit(111)
 	}
@@ -78,30 +89,37 @@ func main() {
 		rwd = *gobin
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Println(err.Error())
-		os.Exit(111)
-	}
 	// chdir or die
 	switch {
-	case len(flag.Args()) >= 1 && *chroot != "":
+	case len(flag.Args()) >= 1 && *destination != "":
 		log.Fatalln("\nfatal: use argument or '-c' flag, not both")
-	case len(flag.Args()) >= 1 && *chroot == "":
-
-		*chroot = flag.Args()[0]
-
+	case len(flag.Args()) >= 1 && *destination == "":
+		if !strings.HasSuffix(*destination, ".go") {
+			*destination = flag.Args()[0]
+		} else {
+			singlefile = flag.Args()[0]
+		}
 		fallthrough
-	case *chroot != "":
-		println("Changing directory:", *chroot)
-		err := os.Chdir(*chroot)
+	case *destination != "":
+		println("Changing directory:", *destination)
+		err := os.Chdir(*destination)
 		if err != nil {
 			log.Println(err.Error())
-			os.Exit(111)
+			if strings.Contains(err.Error(), "no such"){
+				println("Changing directory:", *destination)
+				gopath := os.Getenv("GOPATH")
+				if gopath == "" {
+					gopath = filepath.Join(os.Getenv("HOME"),"go")
+				}
+			if err != nil {
+				err = os.Chdir(filepath.Join(gopath, *destination))
+				log.Println(err.Error())
+				os.Exit(111)
+			}
 		}
-	default: // no args, no chroot
 	}
-
+	default: // no args, no destination
+}
 	// check if user flags are after arguments, in which case they would have been ignored silently
 	for i, fl := range flag.Args() {
 		switch {
@@ -135,7 +153,7 @@ func main() {
 	// get binary name
 
 	bin := binary{
-		name: getMainProjectName(wd),
+		name: getMainProjectName(*destination),
 		// Change these according to the platforms you would like to support. A
 		// full list can be found here:
 		// https://golang.org/doc/install/source#environment
@@ -183,12 +201,11 @@ func main() {
 // getVersion returns the version of the project using git.
 func getVersion() string {
 	cmd := exec.Command("git", "describe", "--tags", "--always")
+	cmd.Dir = *destination
 	buf := new(bytes.Buffer)
 	cmd.Stderr = buf
 	out, err := cmd.Output()
 	if err != nil {
-		// log.Println(buf.String())
-		// log.Printf("No git: Error running git describe: %v", err)
 		return ""
 	}
 
@@ -223,7 +240,7 @@ func forEachBinTargetSeries(bin binary, fn binaryFunc) {
 func buildBinary(bin binary, OS, arch string) {
 	t1 := time.Now()
 	ldflags := fmt.Sprintf("--ldflags=-s -X main.version=%s", bin.version)
-	cmd := exec.Command("go", "build", "-x", ldflags, "-o", rwd+bin.Name(OS, arch))
+	cmd := exec.Command("go", "build", "-x", ldflags, "-o", rwd+bin.Name(OS, arch), singlefile)
 	buf := new(bytes.Buffer)
 	cmd.Stdout = buf
 	cmd.Stderr = buf
