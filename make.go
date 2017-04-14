@@ -110,12 +110,14 @@ func main() {
 					gopath = filepath.Join(os.Getenv("HOME"), "go")
 				}
 				gopath = filepath.Join(gopath, "src")
-				err = os.Chdir(filepath.Join(gopath, *destination))
+				dest := filepath.Join(gopath, *destination)
+				err = os.Chdir(dest)
 
 				if err != nil {
 					log.Println(err.Error())
 					os.Exit(111)
 				}
+				*destination = dest
 			}
 		}
 	default: // no args, no destination
