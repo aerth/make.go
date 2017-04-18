@@ -1,4 +1,4 @@
-//usr/bin/true; exec /usr/bin/env go run "$0" "$@"; exit "$?"
+//usr/bin/env true; exec /usr/bin/env go run "$0" "$@"; exit "$?"
 //+build ignore
 
 /*
