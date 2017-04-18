@@ -1,4 +1,4 @@
-///bin/true; exec /usr/bin/env go run "$0" "$@"; exit "$?"
+///usr/bin/true; exec /usr/bin/env go run "$0" "$@"; exit "$?"
 //+build ignore
 
 /*
@@ -49,8 +49,9 @@ var (
 	buildOS     = flag.String("os", runtime.GOOS, "set operating system to build for")
 	buildArch   = flag.String("arch", runtime.GOARCH, "set architecture to build for")
 	destination = flag.String("c", "", "change to directory before starting")
-	gobin       = flag.String("o", "", "output files to directory, current working directory if blank")
+	gobin       = flag.String("o", "", "output files to directory, current working directory if blank (see -name)")
 	maxproc     = flag.Int("j", 4, "max processes")
+	name        = flag.String("name", "", "name file (similar to cc -o)")
 	rwd         string // real working directory, where binaries will be located
 	singlefile  string
 )
@@ -274,6 +275,9 @@ func buildBinary(bin binary, OS, arch string) {
 	t1 := time.Now()
 	ldflags := fmt.Sprintf("--ldflags=-s -w -X main.version=%s", bin.version)
 	cmd := exec.Command("go", "build", "-x", ldflags, "-o", rwd+bin.Name(OS, arch), singlefile)
+	if *name != "" {
+		cmd = exec.Command("go", "build", "-x", ldflags, "-o", filepath.Join(rwd, *name))
+	}
 	buf := new(bytes.Buffer)
 	cmd.Stdout = buf
 	cmd.Stderr = buf
