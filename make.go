@@ -52,6 +52,7 @@ var (
 	gobin       = flag.String("o", "", "output files to directory, current working directory if blank (see -name)")
 	maxproc     = flag.Int("j", 4, "max processes")
 	name        = flag.String("name", "", "name file (similar to cc -o)")
+	buildmode 	= flag.String("buildmode", "pie", "see 'go help buildmode'")
 	rwd         string // real working directory, where binaries will be located
 	singlefile  string
 )
@@ -174,7 +175,7 @@ func main() {
 		os.Setenv("CGO_ENABLED", "0")
 		log.Println("compiler: GC")
 	}
-
+	log.Println("buildmode:", *buildmode)
 	// print max procs
 	runtime.GOMAXPROCS(*maxproc)
 	println("gomaxprocs:", runtime.GOMAXPROCS(*maxproc))
@@ -274,13 +275,18 @@ func forEachBinTargetSeries(bin binary, fn binaryFunc) {
 func buildBinary(bin binary, OS, arch string) {
 	t1 := time.Now()
 	ldflags := fmt.Sprintf("--ldflags=-s -w -X main.version=%s", bin.version)
-	cmd := exec.Command("go", "build", "-x", ldflags, "-o", rwd+bin.Name(OS, arch), singlefile)
+	cmd := exec.Command("go", "build", "-buildmode="+*buildmode, "-x", ldflags, "-o", rwd+bin.Name(OS, arch), singlefile)
 	if *name != "" {
-		cmd = exec.Command("go", "build", "-x", ldflags, "-o", filepath.Join(rwd, *name))
+		cmd = exec.Command("go", "build", "-buildmode="+*buildmode, "-x", ldflags, "-o", filepath.Join(rwd, *name))
 	}
 	buf := new(bytes.Buffer)
-	cmd.Stdout = buf
-	cmd.Stderr = buf
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	if *verbose {
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		cmd.Stdin = os.Stdin
+	}
 
 	cmd.Env = copyOSEnv()
 	cmd.Env = setEnv(cmd.Env, "GOOS", OS)
@@ -294,10 +300,7 @@ func buildBinary(bin binary, OS, arch string) {
 		}
 		os.Exit(111)
 	}
-	// print build log
-	if *verbose {
-		log.Println(buf.String())
-	}
+
 	// "Built make.go (1min2sec)"
 	log.Printf("built %s (%s)", bin.Name(OS, arch), time.Now().Sub(t1))
 }
