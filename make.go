@@ -52,7 +52,7 @@ var (
 	gobin       = flag.String("o", "", "output files to directory, current working directory if blank (see -name)")
 	maxproc     = flag.Int("j", 4, "max processes")
 	name        = flag.String("name", "", "name file (similar to cc -o)")
-	buildmode 	= flag.String("buildmode", "pie", "see 'go help buildmode'")
+	buildmode 	= flag.String("buildmode", "default", "see 'go help buildmode'")
 	rwd         string // real working directory, where binaries will be located
 	singlefile  string
 )
