@@ -53,6 +53,7 @@ var (
 	maxproc     = flag.Int("j", 4, "max processes")
 	name        = flag.String("name", "", "name file (similar to cc -o)")
 	buildmode 	= flag.String("buildmode", "default", "see 'go help buildmode'")
+	noversion   = flag.Bool("noversion", false, "dont automatically substitute 'version' var")
 	rwd         string // real working directory, where binaries will be located
 	singlefile  string
 )
@@ -275,6 +276,9 @@ func forEachBinTargetSeries(bin binary, fn binaryFunc) {
 func buildBinary(bin binary, OS, arch string) {
 	t1 := time.Now()
 	ldflags := fmt.Sprintf("--ldflags=-s -w -X main.version=%s", bin.version)
+	if *noversion {
+		ldflags = "--ldflags=-s -w"
+	}
 	cmd := exec.Command("go", "build", "-buildmode="+*buildmode, "-x", ldflags, "-o", rwd+bin.Name(OS, arch), singlefile)
 	if *name != "" {
 		cmd = exec.Command("go", "build", "-buildmode="+*buildmode, "-x", ldflags, "-o", filepath.Join(rwd, *name))
