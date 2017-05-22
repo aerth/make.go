@@ -6,8 +6,8 @@
 - Automated versioning of produced binaries if project is a git repo
 - Parallel cross compilation for all target platforms. (-all flag)
 - `gc` by default, use -cgo flag or CGO_ENABLED=1 var to use `cgo`
-- Produces static linked binaries for all platforms in one easy command
-
+- Produces stripped, static linked binaries for all platforms in one easy command: 'make.go -v -all'
+- Creates smaller binaries than a simple 'go build': 636704 vs 960134
 ## Usage
 
 `make.go` should be made executable (`chmod +x`).
