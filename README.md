@@ -24,7 +24,6 @@ It can be installed system-wide (`/usr/local/bin/make.go`), or customized and pa
 ## Good alternatives
 
 - A Makefile or other script.
-- [Gox](https://github.com/mitchellh/gox), my personal favorite cross compile tool.
 - [Gomaker](https://github.com/aerth/gomaker), Makefile generator for Go projects
 
 ## License
