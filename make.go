@@ -40,7 +40,7 @@ type binary struct {
 }
 
 var (
-	_release    = "v0.1.01" // make.go release
+	_release    = "v0.1.1" // make.go release
 	cross       = flag.Bool("all", false, "build binaries for all target platforms")
 	verbose     = flag.Bool("v", false, "print build output")
 	series      = flag.Bool("s", false, "one build at a time")
@@ -52,7 +52,7 @@ var (
 	gobin       = flag.String("o", "", "output files to directory, current working directory if blank (see -name)")
 	maxproc     = flag.Int("j", 4, "max processes")
 	name        = flag.String("name", "", "name file (similar to cc -o)")
-	buildmode 	= flag.String("buildmode", "default", "see 'go help buildmode'")
+	buildmode   = flag.String("buildmode", "default", "see 'go help buildmode'")
 	noversion   = flag.Bool("noversion", false, "dont automatically substitute 'version' var")
 	rwd         string // real working directory, where binaries will be located
 	singlefile  string
@@ -276,12 +276,13 @@ func forEachBinTargetSeries(bin binary, fn binaryFunc) {
 func buildBinary(bin binary, OS, arch string) {
 	t1 := time.Now()
 	ldflags := fmt.Sprintf("--ldflags=-s -w -X main.version=%s", bin.version)
+	gcflags := "--gcflags=-trimpath $GOPATH/src"
 	if *noversion {
 		ldflags = "--ldflags=-s -w"
 	}
-	cmd := exec.Command("go", "build", "-buildmode="+*buildmode, "-x", ldflags, "-o", rwd+bin.Name(OS, arch), singlefile)
+	cmd := exec.Command("go", "build", gcflags, "-buildmode="+*buildmode, "-x", ldflags, "-o", rwd+bin.Name(OS, arch), singlefile)
 	if *name != "" {
-		cmd = exec.Command("go", "build", "-buildmode="+*buildmode, "-x", ldflags, "-o", filepath.Join(rwd, *name))
+		cmd = exec.Command("go", "build", gcflags, "-buildmode="+*buildmode, "-x", ldflags, "-o", filepath.Join(rwd, *name))
 	}
 	buf := new(bytes.Buffer)
 	cmd.Stdout = nil
